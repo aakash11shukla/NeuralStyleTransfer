@@ -18,8 +18,6 @@ from scipy.optimize import fmin_l_bfgs_b
 
 
 def VGG16_AvgPool(shape):
-  # we want to account for features across the entire image
-  # so get rid of the maxpool which throws away information
   vgg = VGG16(input_shape=shape, weights='imagenet', include_top=False)
 
   new_model = Sequential()
@@ -33,10 +31,6 @@ def VGG16_AvgPool(shape):
   return new_model
 
 def VGG16_AvgPool_CutOff(shape, num_convs):
-  # there are 13 convolutions in total
-  # we can pick any of them as the "output"
-  # of our content model
-
   if num_convs < 1 or num_convs > 13:
     print("num_convs must be in the range [1, 13]")
     return None
@@ -82,25 +76,13 @@ if __name__ == '__main__':
   batch_shape = x.shape
   shape = x.shape[1:]
 
-  # see the image
-  # plt.imshow(img)
-  # plt.show()
-
-
-  # make a content model
-  # try different cutoffs to see the images that result
   content_model = VGG16_AvgPool_CutOff(shape, 11)
 
   # make the target
   target = K.variable(content_model.predict(x))
 
-
-  # try to match the image
-
-  # define our loss in keras
   loss = K.mean(K.square(target - content_model.output))
 
-  # gradients which are needed by the optimizer
   grads = K.gradients(loss, content_model.input)
 
   # just like theano.function
@@ -111,17 +93,6 @@ if __name__ == '__main__':
 
 
   def get_loss_and_grads_wrapper(x_vec):
-    # scipy's minimizer allows us to pass back
-    # function value f(x) and its gradient f'(x)
-    # simultaneously, rather than using the fprime arg
-    #
-    # we cannot use get_loss_and_grads() directly
-    # input to minimizer func must be a 1-D array
-    # input to get_loss_and_grads must be [batch_of_images]
-    #
-    # gradient must also be a 1-D array
-    # and both loss and gradient must be np.float64
-    # will get an error otherwise
 
     l, g = get_loss_and_grads([x_vec.reshape(*batch_shape)])
     return l.astype(np.float64), g.flatten().astype(np.float64)
